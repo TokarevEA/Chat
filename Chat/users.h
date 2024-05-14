@@ -29,28 +29,6 @@ public:
 			cout << endl << "new struct offset: " << this->offset << endl;
 		};
 
-		/*Data(string stroka, int offset) {
-			string out;
-			string delim = "<delim>";
-			int d_length = delim.length();
-			int delim_pos1;// позиция делиметра в первой итерации
-			int pwd_pos;
-			int delim_pos2;// второй итерации
-			int token_pos;
-			int delim_pos3;// третьей итерации
-			
-			delim_pos1 = stroka.find(delim);
-			pwd_pos = delim_pos1 + d_length;
-			this->login = stroka.substr(0, delim_pos1);
-			delim_pos2 = stroka.find(delim, pwd_pos);
-			this->pwd_hash = stroka.substr(pwd_pos, delim_pos2 - pwd_pos);
-			token_pos = delim_pos2 + d_length;
-			delim_pos3 = stroka.find(delim, token_pos);
-			this->token = stroka.substr(token_pos, delim_pos3 - token_pos);
-			this->name = stroka.substr(delim_pos3 + d_length);
-			this->offset = offset;
-			}*/
-
 
 		Data(string line, int offset) {
 			string delim = "<delim>";
@@ -62,15 +40,16 @@ public:
 			this->token = line.substr(token_offset, line.find(delim, token_offset) - token_offset);
 			this->name = line.substr(token_offset + token.length() + 7);
 			this->offset = offset;
-		}	
-	};	
+		}
+	};
+
 
 	static string gen_token(bool zero_t = false) {
 		string token;
 		if (zero_t) {
 			for (int i = 0; i < 32; ++i) {
 				token.append("0");
-			}			
+			}
 		}
 		else {
 			srand(static_cast<unsigned int>(time(nullptr)));
@@ -83,10 +62,10 @@ public:
 
 
 	static bool verify_token(string token) {
-			
+
 		return Users::search(token, "token").token == token;
 	}
-	
+
 
 
 	static Users::Data search(string str, string by = "login") { // str - логин или токен
@@ -94,7 +73,7 @@ public:
 		string line; // текущая строка
 		int out = -1;
 		int offset = 0; // финальная позиция нахождения паттерна в строке
-		
+
 		fstream file(users_file);
 		if (!file.is_open()) {
 			Users::Data data = Users::Data();
@@ -109,7 +88,7 @@ public:
 		while (getline(file, line)) {
 			out = line.find(pattern);
 
-			if (out >= offset || out>0) {
+			if (out >= offset || out > 0) {
 				break;
 			}
 
@@ -121,11 +100,11 @@ public:
 		//если паттерн не найден, возвращается конструктор пустой даты с оффсетом -1
 		if (out == -1) {
 			Users::Data data = Users::Data();
-			
+
 			return data;
 		}
 
-		Users::Data data = Users::Data(line, offset);		
+		Users::Data data = Users::Data(line, offset);
 		return data;
 	}
 
@@ -138,7 +117,7 @@ public:
 		if (!file.is_open()) {
 			return "";
 		}
-		if (Users::search(login).offset > - 1) {
+		if (Users::search(login).offset > -1) {
 			return "";
 		}
 		hash<string> hasher;
@@ -165,15 +144,28 @@ public:
 			if (!file.is_open()) {
 				return "";
 			}
-			
+
 			file.seekp(user_data.offset - user_data.name.length() - 41);
 			file << gen_token();
 			file.close();
 			user_data.token = gen_token();
 			return user_data.token;
 		}
-	};
+	}
 
 
-	static void get_users_logins() {};
+	static string get_users_logins() {
+		string logins;
+		string line;
+		fstream file(users_file);
+		if (!file.is_open()) {
+			return "";
+		}
+
+		while (getline(file, line)) {
+			logins.append(line.substr(0, line.find(Users::delim)) + "\n");
+		}
+
+		return logins;
+	}
 };
