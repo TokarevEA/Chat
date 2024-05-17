@@ -5,6 +5,7 @@
 #include <limits>
 #include <string>
 #include <unordered_map>
+#include <map>
 
 using namespace std;
 
@@ -26,7 +27,6 @@ public:
 
 		Data() {
 			this->offset = -1;
-			cout << endl << "new struct offset: " << this->offset << endl;
 		};
 
 
@@ -45,17 +45,13 @@ public:
 
 
 	static string gen_token(bool zero_t = false) {
-		string token;
 		if (zero_t) {
-			for (int i = 0; i < 32; ++i) {
-				token.append("0");
-			}
+			return "00000000000000000000000000000000";
 		}
-		else {
-			srand(static_cast<unsigned int>(time(nullptr)));
-			for (int i = 0; i < 32; ++i) {
-				token.append(to_string(rand() % 10));
-			}
+		string token;
+		srand(static_cast<unsigned int>(time(nullptr)));
+		for (int i = 0; i < 32; ++i) {
+			token.append(to_string(rand() % 10));
 		}
 		return token;
 	}
@@ -82,30 +78,27 @@ public:
 
 		if (by == "token") {
 			pattern = delim + str + delim;
-			offset = numeric_limits<int>::max();
+			offset = INT_MAX;
 		}
 
 		while (getline(file, line)) {
 			out = line.find(pattern);
 
-			if (out >= offset || out > 0) {
-				break;
+			if (out > offset || out == -1) {
+				continue;
 			}
 
+			break;
 		}
-
-		offset = int(file.tellg());	//где остановился курсор в файле после чтения
+		int line_offset = int(file.tellg());
 		file.close();
 
-		//если паттерн не найден, возвращается конструктор пустой даты с оффсетом -1
+		//если паттерн не найден, возвращается конструктор пустой даты с офсетом -1
 		if (out == -1) {
-			Users::Data data = Users::Data();
-
-			return data;
+			return Users::Data();
 		}
 
-		Users::Data data = Users::Data(line, offset);
-		return data;
+		return Users::Data(line, line_offset);
 	}
 
 
@@ -139,33 +132,49 @@ public:
 			return "";
 		}
 
-		else {
-			fstream file(users_file);
-			if (!file.is_open()) {
-				return "";
-			}
-
-			file.seekp(user_data.offset - user_data.name.length() - 41);
-			file << gen_token();
-			file.close();
-			user_data.token = gen_token();
-			return user_data.token;
-		}
-	}
-
-
-	static string get_users_logins() {
-		string logins;
-		string line;
 		fstream file(users_file);
 		if (!file.is_open()) {
 			return "";
 		}
 
+		file.seekp(user_data.offset - user_data.name.length() - 41);
+		string token = gen_token();
+		file << token;
+		file.close();
+		return token;
+	}
+
+	static map <string, string> get_users_logins_map() {
+		map <string, string> logins;
+		string line;
+		string to_map;
+		int i = 0;
+		fstream file(users_file);
+		if (!file.is_open()) {
+			return logins;
+		}
 		while (getline(file, line)) {
-			logins.append(line.substr(0, line.find(Users::delim)) + "\n");
+			++i;
+			to_map = line.substr(0, line.find(Users::delim));
+			logins.emplace(to_string(i), to_map);
+		}
+		file.close();
+		return logins;
+	}
+
+
+	static string get_users_logins() {
+		string line;
+		string logins;
+		fstream file(users_file);
+		if (!file.is_open()) {
+			return "";
 		}
 
+		while(getline(file, line)) {
+			logins.append(line.substr(0, line.find(Users::delim)) + "\n");
+		}
+		file.close();
 		return logins;
 	}
 };
