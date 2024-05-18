@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include<iostream>
+#include <chrono>
+#include <ctime>
 using namespace std;
 
 class Messages {
@@ -24,7 +26,7 @@ public:
 			this->message = "error"; //чтобы обрабатывать ошибки в методах get_ _messages
 			this->time_string = to_string(t.tm_hour) + ":" + to_string(t.tm_min) + ":" + to_string(t.tm_sec);
 		}
-				
+
 
 		//конструктор с алгоритмом разбиения строки на поля структуры
 		Message(string line) {
@@ -39,8 +41,10 @@ public:
 			this->message = line.substr(mess_offset, line.find(mess_delim, mess_offset) - mess_offset);
 			this->time_string = line.substr(mess_offset + message.length() + 7);
 		}
+		~Message() {};
 	};
 
+	//получение приватных сообщений
 	static Messages::Message* get_private_messages(string sender_login, string cli_login) {
 		string line = "";
 		char symbol;
@@ -55,20 +59,26 @@ public:
 			Messages::Message null_struct = Messages::Message();
 			return messages;
 		}
-
+		//файл читается от более новых строк к более старым (с конца в начало)
 		while (saved_messages < 20 && file.tellg() > -1) {
-
+			// посимвольное чтение строки с конца в начало
 			file.seekg(-1, std::ios::cur);
 			do {
 				file.seekg(-2, std::ios::cur); // двигаем указатель на два символа назад
 				file.get(symbol); // считываем символ
-				line = symbol + line;
-			} while (symbol != '\n' && file.tellg() > -1);
 
+				if (symbol == '\n') {
+					break;
+				}
+
+				line = symbol + line;
+			} while (file.tellg() > -1);
+			// записываю позицию обоих вариантов расположения логинов в строке,
+			// чтобы найти и отправленные, и полученные сообщения в одну структуру
 			pos = line.find(sender_login + mess_delim + cli_login);
 			pos1 = line.find(cli_login + mess_delim + sender_login);
 
-			if (pos > -1 || pos1 > -1) {
+			if (pos == 0 || pos1 == 0) {
 				Messages::Message message_struct = Messages::Message(line);
 				messages[19 - saved_messages] = message_struct;
 				++saved_messages;
@@ -77,9 +87,10 @@ public:
 			line = "";
 		}
 
+		file.close();
 		return messages;
 	}
-		
+
 	static Messages::Message* get_public_messages() {
 		string line = "";
 		char symbol;
@@ -94,10 +105,12 @@ public:
 		}
 		while (saved_messages < 20 && file.tellg() > -1) {
 			file.seekg(-1, std::ios::cur);
+
 			do {
 				file.seekg(-2, std::ios::cur); // двигаем указатель на два символа назад
 				file.get(symbol); // считываем символ
 				line = symbol + line;
+
 			} while (symbol != '\n' && file.tellg() > -1);
 
 			pos = line.find(mess_delim + "Group" + mess_delim);
@@ -107,39 +120,57 @@ public:
 				messages[19 - saved_messages] = message_struct;
 				++saved_messages;
 			}
-			line = "";			
+			line = "";
 		}
 
+		file.close();
 		return messages;
 	}
 
-	static void send_message(string cli_login, string message, string rec_login = "Group") {
+static void send_message(string cli_login, string message, string rec_login = "Group") {
 
-		//создание метки времени
-		time_t t1 = time(NULL);
-		tm t;
-		localtime_s(&t, &t1);
-		string time_stamp = to_string(t.tm_hour) + ":" + to_string(t.tm_min) + ":" + to_string(t.tm_sec);
-
-		fstream file(messages_file, ios::app);
-		if (!file.is_open()) {
-			return;
-		}
-		//запись строки с сообщением и метками в файл
-		file << cli_login << mess_delim << rec_login << mess_delim << message << mess_delim << time_stamp <<endl;
-		file.close();
+	// Ограничение размера сообщения и ввода запретных паттернов
+	if (message.length() > 2000 || message.length() < 1 || message.find(Users::delim) != string::npos) {
 		return;
 	}
 
-	static void draw_chat_history(Messages::Message* message_struct) {
-		for (int i = 0; i < 20; ++i) {
-			//выводит на экран поля структуры, если прошла проверка на "error" 
-			// (см. конструктор структуры по умолчанию)
-			if (message_struct[i].message != "error") {
-				cout << endl << message_struct[i].author_login 
-					<< " " << message_struct[i].message << " " 
-					<< message_struct[i].time_string;
-			}
+	// Получение текущего времени и форматирование в строку
+	auto now = chrono::system_clock::now();
+	time_t now_time = chrono::system_clock::to_time_t(now);
+
+	struct tm timeinfo;
+	localtime_s(&timeinfo, &now_time);
+
+	char time_string[80];
+	strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", &timeinfo);
+
+	fstream file(messages_file, ios::app);
+	if (!file.is_open()) {
+		return;
+	}
+
+	//запись строки с сообщением и метками в файл
+	file << cli_login << mess_delim << rec_login << mess_delim << message << mess_delim << time_string << endl;
+	file.close();
+	return;
+}
+
+static void draw_chat_history(Messages::Message* ms, string login) {
+	for (int i = 0; i < 20; ++i) {
+
+		//выводит на экран поля структуры, если прошла проверка на "error" 
+		// (см. конструктор структуры по умолчанию)
+		if (ms[i].message != "error") {
+
+			// формирование строки и наведение консольной красоты
+			cout << endl
+				<< "\033[32m[" << ms[i].time_string << "]\033[0m "
+				<< (ms[i].author_login == login ? "\033[33m" : "")
+				<< ms[i].author_login << " >>> "
+				<< ms[i].rec_login << ": "
+				<< ms[i].message << "\033[0m ";
+
 		}
 	}
+}
 };

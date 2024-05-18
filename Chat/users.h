@@ -12,9 +12,9 @@ using namespace std;
 class Users {
 private:
 	static const string users_file;
-	static const string delim;
 
 public:
+	static const string delim;
 
 	struct Data {
 	public:
@@ -29,7 +29,6 @@ public:
 			this->offset = -1;
 		};
 
-
 		Data(string line, int offset) {
 			string delim = "<delim>";
 			int delim_pos = int(line.find(delim));
@@ -41,8 +40,8 @@ public:
 			this->name = line.substr(token_offset + token.length() + 7);
 			this->offset = offset;
 		}
+		~Data() {};
 	};
-
 
 	static string gen_token(bool zero_t = false) {
 		if (zero_t) {
@@ -56,14 +55,13 @@ public:
 		return token;
 	}
 
+	//шаблонная функция проверяет актуальность текущего токена
+	template <typename T>
+	static bool verify_token(T token) {
 
-	static bool verify_token(string token) {
-
-		return Users::search(token, "token").token == token;
+		return token != "" && Users::search(token, "token").token == token;
 	}
-
-
-
+	
 	static Users::Data search(string str, string by = "login") { // str - логин или токен
 		string pattern = str + Users::delim; // паттерн поиска
 		string line; // текущая строка
@@ -101,50 +99,62 @@ public:
 		return Users::Data(line, line_offset);
 	}
 
-
-	static string registration(string login, string pwd, string name) {
-		if (login == "" || login.find(" ") > -1) {
-			return "";
+	static Data registration(string login, string pwd, string name) {
+		
+		// проверка на логин == пустая строка или содержание пробелов
+		if (login == "" || login.find(" ") > -1) { 
+			return Data();
 		}
 		fstream file(users_file, ios::app);
 		if (!file.is_open()) {
-			return "";
+			return Data();
 		}
+		// проверка наличия логина в базе
 		if (Users::search(login).offset > -1) {
-			return "";
+			file.close();
+			return Data();
 		}
+		// запись строки нового пользователя в файл
 		hash<string> hasher;
 		file << login << delim << hasher(pwd) << delim << gen_token(true)//zero token gen
 			<< delim << name << endl;
 		file.close();
+		// сразу его авторизуем
 		return authorization(login, pwd);
 	}
 
-
-	static string authorization(string login, string pwd) {
+	static Data authorization(string login, string pwd) {
+		// пишем в поля структуры разделенную строку 
 		Data user_data = search(login);
 		hash<string> hasher;
+		// если логин в файле не найден (в офсет записано find(login) == -1),
+		// возвращает пустую структуру (см конструктор по умолчанию)
 		if (user_data.offset == -1) {
-			return "";
+			return Data();
 		}
 
+		// сравнение хэшей пароля
 		if (to_string(hasher(pwd)) != user_data.pwd_hash) {
-			return "";
+			return Data();
 		}
 
 		fstream file(users_file);
 		if (!file.is_open()) {
-			return "";
+			return Data();
 		}
 
+		// ставим курсор на позицию начала токена в строке
 		file.seekp(user_data.offset - user_data.name.length() - 41);
-		string token = gen_token();
-		file << token;
+
+		// создаем новый токен и пишем его в файл
+		user_data.token = gen_token();
+		file << user_data.token;
 		file.close();
-		return token;
+		return user_data;
 	}
 
 	static map <string, string> get_users_logins_map() {
+		// создает список логинов в тип map
 		map <string, string> logins;
 		string line;
 		string to_map;
@@ -157,22 +167,6 @@ public:
 			++i;
 			to_map = line.substr(0, line.find(Users::delim));
 			logins.emplace(to_string(i), to_map);
-		}
-		file.close();
-		return logins;
-	}
-
-
-	static string get_users_logins() {
-		string line;
-		string logins;
-		fstream file(users_file);
-		if (!file.is_open()) {
-			return "";
-		}
-
-		while(getline(file, line)) {
-			logins.append(line.substr(0, line.find(Users::delim)) + "\n");
 		}
 		file.close();
 		return logins;
