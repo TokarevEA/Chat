@@ -18,17 +18,23 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="users.cpp">
-      <Filter>Header Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="users.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="messages.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="screens.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="messages.txt" />
     <Text Include="users.txt" />
+    <Text Include="messages.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.MD" />
   </ItemGroup>
 </Project>

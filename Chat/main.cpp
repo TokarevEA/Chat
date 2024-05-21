@@ -1,5 +1,5 @@
 #include<iostream>
-#include <map>
+#include<map>
 #include<ctime>
 #include"screens.h"
 #include"users.h"
@@ -15,26 +15,26 @@ string const Messages::mess_delim = "<delim>";
 
 int main() {
 	Users::Data udata;
-	
-	string choice;
+	string screen_choice;
+
 
 	while (true) {
 
 		while (udata.token == "") {
 			cout << "1 - Registration" << endl << "2 - Authorization" << endl << "3 - Exit" << endl;
-			cin >> choice;
+			cin >> screen_choice;
 
-			if (choice == "1") {
+			if (screen_choice == "1") {
 				udata = Screen::Registration();
 				break;
 			}
 
-			if (choice == "2") {
+			if (screen_choice == "2") {
 				udata = Screen::Authorization();
 				break;
 			}
 
-			if (choice == "3") {
+			if (screen_choice == "3") {
 				cout << "Exit" << endl;
 				return 0;
 			}
@@ -47,5 +47,6 @@ int main() {
 			Screen::Chat(Screen::SelectChat(), udata.login);
 		}
 	}
+
 	return 0;
 }

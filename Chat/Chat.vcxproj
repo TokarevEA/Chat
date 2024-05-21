@@ -128,14 +128,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="users.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="messages.h" />
+    <ClInclude Include="screens.h" />
     <ClInclude Include="users.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="messages.txt" />
     <Text Include="users.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.MD" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
